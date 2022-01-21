@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "blackblock-example",
   "version": "${version}",
 
-  "name": "Example Mod",
+  "name": "Blackblock Example Mod",
   "description": "This is an example description! Tell everyone what your mod is about!",
   "authors": [
     "Me!"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://blackblock.rocks/",
+    "sources": "https://github.com/skerit/minecraft-mod-skeleton"
   },
 
-  "license": "CC0-1.0",
+  "license": "GPL3",
   "icon": "assets/modid/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "net.fabricmc.example.ExampleMod"
+      "rocks.blackblock.example.ExampleMod"
     ]
   },
   "mixins": [
@@ -33,6 +33,6 @@
     "java": ">=17"
   },
   "suggests": {
-    "another-mod": "*"
+    
   }
 }
