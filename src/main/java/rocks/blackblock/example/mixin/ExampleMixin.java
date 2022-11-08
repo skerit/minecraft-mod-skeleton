@@ -1,6 +1,6 @@
 package rocks.blackblock.example.mixin;
 
-import net.fabricmc.example.ExampleMod;
+import rocks.blackblock.example.ExampleMod;
 import net.minecraft.client.gui.screen.TitleScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
