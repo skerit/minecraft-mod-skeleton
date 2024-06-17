@@ -1,4 +1,4 @@
-package com.example;
+package rocks.blackblock.example;
 
 import net.fabricmc.api.ModInitializer;
 
