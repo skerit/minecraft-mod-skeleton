@@ -1,21 +1,101 @@
 plugins {
 	id 'fabric-loom' version '1.7-SNAPSHOT'
 	id 'maven-publish'
+	id 'org.checkerframework' version '0.6.40'
 }
 
-version = project.mod_version
-group = project.maven_group
+apply plugin: 'org.checkerframework'
+
+/**
+ * Version setup
+ */
+def baseVersion = project.mod_version
+def baseGroup = project.maven_group
+def localPropertiesFile = file('local.properties')
+def localProperties = new Properties()
+
+if (localPropertiesFile.exists()) {
+	localPropertiesFile.withInputStream { stream ->
+		localProperties.load(stream)
+	}
+}
+
+def envVars = System.getenv()
+def currentEnvironment = envVars.getOrDefault("ENV", localProperties.getProperty("environment", "dev"))
+def isDevelopment = currentEnvironment == "dev"
+def localRepoDir = null
+ext.versionModifier = null
+
+if (localProperties.hasProperty("localRepoDir")) {
+	localRepoDir = localProperties.getProperty("localRepoDir")
+} else if (project.hasProperty("localRepoDir")) {
+	localRepoDir = project.findProperty("localRepoDir")
+}
+
+if (isDevelopment) {
+	versionModifier = "-SNAPSHOT"
+}
+
+def constructVersion(baseVersion) {
+	def result = baseVersion + versionModifier
+	return result
+}
+
+version = constructVersion(baseVersion)
+group = baseGroup
+
+println("Info: currentEnvironment = $currentEnvironment")
+println("Info: isDevelopment = $isDevelopment")
+println("Info: localRepoDir = $localRepoDir")
+println("Info: versionModifier = $versionModifier")
+println("Info: version = " + version)
 
 base {
 	archivesName = project.archives_base_name
 }
 
 repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
+
+	maven { url 'https://jitpack.io' }
+	maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+	maven { url "https://maven.nucleoid.xyz/" }
+
+	// Blackblock
+	maven {
+		url 'https://maven.blackblock.rocks/releases'
+	}
+
+	// Modrinth offers a maven repository
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = "Modrinth"
+				url = "https://api.modrinth.com/maven"
+			}
+		}
+		filter {
+			includeGroup "maven.modrinth"
+		}
+	}
+
+	// Curseforge also offers a maven repository,
+	// though dependencies have to use file id's
+	exclusiveContent {
+		forRepository {
+			maven {
+				url "https://cursemaven.com"
+			}
+		}
+		filter {
+			includeGroup "curse.maven"
+		}
+	}
+
+	if (isDevelopment && localRepoDir) {
+		maven {
+			url localRepoDir
+		}
+	}
 }
 
 loom {
@@ -35,10 +115,13 @@ dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	
+
+	// Blackblock's core mod, which imports a bunch of other dependencies
+	modImplementation ("rocks.blackblock:blackblock-core:${constructVersion(project.blackblock_core_version)}")
+
+	// The optional topper mod
+	modImplementation ("rocks.blackblock:blackblock-topper:${constructVersion(project.blackblock_topper_version)}")
 }
 
 processResources {
@@ -73,8 +156,15 @@ jar {
 publishing {
 	publications {
 		create("mavenJava", MavenPublication) {
-			artifactId = project.archives_base_name
-			from components.java
+			artifactId = archives_base_name
+
+			// add all the jars that should be included when publishing to maven
+			artifact(remapJar) {
+				builtBy remapJar
+			}
+			artifact(sourcesJar) {
+				builtBy remapSourcesJar
+			}
 		}
 	}
 
@@ -84,5 +174,25 @@ publishing {
 		// Notice: This block does NOT have the same function as the block in the top level.
 		// The repositories here will be used for publishing your artifact, not for
 		// retrieving dependencies.
+		repositories {
+			if (envVars.MAVEN_URL) {
+				maven {
+					credentials {
+						username envVars.MAVEN_USERNAME
+						password envVars.MAVEN_PASSWORD
+					}
+					url envVars.MAVEN_URL
+				}
+			} else {
+				mavenLocal()
+			}
+
+			if (isDevelopment && localRepoDir) {
+				maven {
+					name = 'local'
+					url = uri(localRepoDir)
+				}
+			}
+		}
 	}
 }
